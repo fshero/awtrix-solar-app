@@ -1,6 +1,6 @@
 # SolarApp - AWTRIX Solar & Energy Monitor (52x16)
 
-[![Version](https://img.shields.io/badge/version-4.3.1-orange.svg)](Changelog.md)
+[![Version](https://img.shields.io/badge/version-4.3.2-orange.svg)](Changelog.md)
 [![Platform](https://img.shields.io/badge/platform-AWTRIX%20NG%20%7C%20Light-blue.svg)](https://github.com/Blueforcer/awtrix-light)
 [![Display](https://img.shields.io/badge/display-52x16%20Matrix%20(Ulanzi%20TC002)-brightgreen.svg)]()
 [![Language](https://img.shields.io/badge/language-Berry%20(.ax)-yellow.svg)]()

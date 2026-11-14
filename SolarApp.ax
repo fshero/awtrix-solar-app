@@ -1,6 +1,6 @@
 # @name    SolarApp
 # @desc    Animated solar production, daily yield and house consumption display
-# @version 4.3.1
+# @version 4.3.2
 # @display 52x16
 # @config  visual_style      select "Visual Style" default="sun_large" options="sun_large,sun_half"
 # @config  topic_power       text   "Power MQTT Topic" default="inverter/total/P_AC"
@@ -305,7 +305,56 @@ class SolarApp
     var C_LOBE_A = 0x9A3E07
 
     # ----------------------------------------------------
-    # 3. VISUELLE DARSTELLUNG DER LINKEN SEITE (SUN_LARGE / SUN_HALF)
+    # 3. SONNENPARTIKEL (VOR DER SONNE ZEICHNEN -> KEIN SCHWARZER FLECK)
+    # ----------------------------------------------------
+    if is_producing
+      var p_max_x = self.show_consumption ? 46.0 : 48.0
+      var p_max_ix = self.show_consumption ? 46 : 48
+      var p_spawn_base = (self.cfg_style == "sun_half") ? 9.5 : 11.5
+      var p_min_ix = (self.cfg_style == "sun_half") ? 9 : 11
+      var p_bright = self.show_consumption ? 0.65 : 0.60
+      var p_speed_mult = speed_mult * (0.70 + 1.80 * self.smooth_ratio)
+
+      for p: self.solar_particles
+        p[0] = p[0] + p[2] * p_speed_mult
+        if p[0] >= p_max_x
+          p[0] = p_spawn_base + real(int(p[3]) % 3)
+          p[1] = 3.5 + real(int(p[1] + 2.5) % 8)
+          if self.show_consumption self.win_flash = 1.0 end
+        end
+
+        var base_y = p[1] + 0.35 * math.sin(p[0] * 0.15 + p[3])
+        if self.show_consumption && p[0] > 34.0
+          var pull = (p[0] - 34.0) / 12.0
+          base_y = base_y + (10.0 - base_y) * pull * 0.65
+        end
+        var py = int(base_y + 0.5)
+
+        if py >= 0 && py < 16
+          var ix_head = int(p[0])
+          for i: 0 .. 4
+            var cur_x = ix_head + 1 - i
+            if cur_x >= p_min_ix && cur_x < p_max_ix
+              var dist = p[0] - real(cur_x)
+              var w = 0.0
+              if dist >= 0.0 && dist <= 2.8
+                var f = 1.0 - dist / 2.8
+                w = f * f
+              elif dist < 0.0 && dist > -0.6
+                w = 1.0 + dist * 1.6
+              end
+              var eff_w = w * p_bright
+              if eff_w >= 0.03
+                pixel(cur_x, py, self.blend_color(0x000000, p[4], eff_w))
+              end
+            end
+          end
+        end
+      end
+    end
+
+    # ----------------------------------------------------
+    # 4. VISUELLE DARSTELLUNG DER LINKEN SEITE (SUN_LARGE / SUN_HALF)
     # ----------------------------------------------------
     var sun_list = (self.cfg_style == "sun_half") ? self.sun_half_pixels : self.sun_large_pixels
     for p: sun_list
@@ -351,10 +400,10 @@ class SolarApp
     end
 
     # ----------------------------------------------------
-    # 4. RECHTER RAND: SOLARPANEL (YIELD) ODER HAUS (CONSUMPTION)
+    # 5. RECHTER RAND: SOLARPANEL (YIELD) ODER HAUS (CONSUMPTION)
     # ----------------------------------------------------
     if !self.show_consumption
-      # === YIELD-MODUS: SOLARPANEL & SONNENPARTIKEL ===
+      # === YIELD-MODUS: SOLARPANEL ===
       for py: 1 .. 14
         for px: 48 .. 51
           var is_frame = (py == 1 || py == 14 || px == 48)
@@ -383,80 +432,8 @@ class SolarApp
         end
       end
 
-      if is_producing
-        var p_speed_mult = speed_mult * (0.70 + 1.80 * self.smooth_ratio)
-        for p: self.solar_particles
-          p[0] = p[0] + p[2] * p_speed_mult
-          if p[0] >= 48.0
-            p[0] = 11.0 + real(int(p[3]) % 3)
-            p[1] = 3.5 + real(int(p[1] + 2.5) % 8)
-          end
-
-          var py = int(p[1] + 0.35 * math.sin(p[0] * 0.15 + p[3]) + 0.5)
-          if py >= 0 && py < 16
-            var ix_head = int(p[0])
-            for i: 0 .. 4
-              var cur_x = ix_head + 1 - i
-              if cur_x >= 11 && cur_x < 48
-                var dist = p[0] - real(cur_x)
-                var w = 0.0
-                if dist >= 0.0 && dist <= 2.8
-                  var f = 1.0 - dist / 2.8
-                  w = f * f
-                elif dist < 0.0 && dist > -0.6
-                  w = 1.0 + dist * 1.6
-                end
-                var eff_w = w * 0.60
-                if eff_w >= 0.03
-                  pixel(cur_x, py, self.blend_color(0x000000, p[4], eff_w))
-                end
-              end
-            end
-          end
-        end
-      end
-
     else
       # === CONSUMPTION-MODUS: HAUS-SILHOUETTE AM RECHTEN RAND (x=45..51) ===
-      if is_producing
-        var p_speed_mult = speed_mult * (0.70 + 1.80 * self.smooth_ratio)
-        for p: self.solar_particles
-          p[0] = p[0] + p[2] * p_speed_mult
-          if p[0] >= 46.0
-            p[0] = 11.0 + real(int(p[3]) % 3)
-            p[1] = 3.5 + real(int(p[1] + 2.5) % 8)
-            self.win_flash = 1.0
-          end
-
-          var base_y = p[1] + 0.35 * math.sin(p[0] * 0.15 + p[3])
-          if p[0] > 34.0
-            var pull = (p[0] - 34.0) / 12.0
-            base_y = base_y + (10.0 - base_y) * pull * 0.65
-          end
-          var py = int(base_y + 0.5)
-
-          if py >= 0 && py < 16
-            var ix_head = int(p[0])
-            for i: 0 .. 4
-              var cur_x = ix_head + 1 - i
-              if cur_x >= 11 && cur_x < 46
-                var dist = p[0] - real(cur_x)
-                var w = 0.0
-                if dist >= 0.0 && dist <= 2.8
-                  var f = 1.0 - dist / 2.8
-                  w = f * f
-                elif dist < 0.0 && dist > -0.6
-                  w = 1.0 + dist * 1.6
-                end
-                var eff_w = w * 0.65
-                if eff_w >= 0.03
-                  pixel(cur_x, py, self.blend_color(0x000000, p[4], eff_w))
-                end
-              end
-            end
-          end
-        end
-      end
 
       # Haus (Schornstein, Dach, Wände)
       var roof_col = is_surplus ? 0x00E676 : 0xFF9100

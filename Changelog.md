@@ -1,5 +1,12 @@
 # Changelog - SolarApp for AWTRIX
 
+## [4.3.2] - 2026-11-14
+
+### Fixed
+* **Particle Spawn Artifact in `sun_large`:** Rendered solar photon particles before the sun sprite so their fading trail no longer overwrites the outer sun corona with a brief dark spot when emerging.
+
+---
+
 ## [4.3.1] - 2026-10-22
 
 ### Changed
